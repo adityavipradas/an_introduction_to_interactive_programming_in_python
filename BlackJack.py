@@ -12,8 +12,8 @@ CARD_BACK_CENTER = (35.5, 48)
 card_back = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/card_back.png")    
 
 # initialize some useful global variables
-flag1 = False
-flag2 = False
+flag = False
+# flag stands for game over, 
 win = 0
 loss = 0
 wind = 0
@@ -78,11 +78,16 @@ class Hand:
     # count aces as 1, if the hand has an ace, then add 10 to hand value if it doesn't bust
     def get_value(self):
         self.value = 0
+        ace_num=0
         for i in range(0, len(self.rank1)):
             if (self.rank1[i] == 'A' and self.value <= 10):
-                self.value += 11
+                ace_num += 1
+                self.value+=1
             else:
                 self.value += VALUES.get(self.rank1[i])
+        for i in xrange(0,ace_num):
+            if self.value<=11:
+                self.value+=10
         return self.value
 
     def draw(self, canvas, p, r, s):
@@ -145,13 +150,9 @@ class Deck:
 
 #define event handlers for buttons
 def deal():
-    global flag1, flag2, deck, player, dealer, count, loss, wind
-    if (flag1 == True and player.get_value() <= 21):
-        loss += 1
-        wind += 1
-    count = 0
-    flag1 = False
-    flag2 = False
+    global flag, deck, player, dealer, count, loss, wind, count
+    count = 2
+    flag = False
     player = Hand()
     dealer = Hand()
     deck = Deck()
@@ -167,42 +168,58 @@ def deal():
         dealer.add_card(card2)
 
 def hit():
-    global flag1, flag2, loss, deck, player, dealer, wind, count
-    if (count < 5):
-        if (player.get_value() < 21) and flag2 == False:
+    global flag, loss, deck, player, dealer, wind, count
+    if (count < 5 and flag==False):
+        if (player.get_value() <= 21):
+            print(count)
             count += 1
             hit = deck.deal_card()
             split = hit.split()
             card = Card(split[0], split[1])
             player.add_card(card)
-            flag1 = True
-        if (player.get_value() > 21):
-            count = 6
-            loss += 1
-            wind += 1
-    
+            if (player.get_value() > 21):
+                count = 6
+                flag=True
+                if player.get_value()>21:
+                    loss+=1
+                    wind+=1
+                elif dealer.get_value()>21:
+                    win+=1
+                    lossd+=1
+                elif dealer.get_value()>=player.get_value():
+                    loss+=1
+                    wind+=1
+                else:
+                    win+=1
+                    lossd+=1
+
 def stand():
-    global flag1, flag2, win, loss, wind, lossd
-    if (flag2 == False and player.get_value() <= 21):
-        while (dealer.get_value() < 17):
+    global flag, win, loss, wind, lossd
+    if (flag == False and player.get_value() <= 21):
+        countd = 0
+        while ((dealer.get_value() < 17) and (countd<5)):
             hit = deck.deal_card()
             split = hit.split()
             card = Card(split[0], split[1])
             dealer.add_card(card)
-        flag2 = True
-        if (player.get_value() > dealer.get_value()):
-            win += 1
-            lossd += 1
-        elif (player.get_value() < dealer.get_value()):
-            loss += 1
-            wind += 1
-        elif (player.get_value() == dealer.get_value()):
-            loss += 1
-            wind += 1
+            countd+=1
+        flag = True
+        if player.get_value()>21:
+            loss+=1
+            wind+=1
+        elif dealer.get_value()>21:
+            win+=1
+            lossd+=1
+        elif dealer.get_value()>=player.get_value():
+            loss+=1
+            wind+=1
+        else:
+            win+=1
+            lossd+=1
             
 # draw handler    
 def draw(canvas):
-    global flag1, flag2, deck, player, dealer
+    global flag, deck, player, dealer
     # test to make sure that card.draw works, replace with your code below
     canvas.draw_text("Player's Hand:" + str(player.get_value()), (10, 350), 12, "Yellow")
     canvas.draw_text("Player", (40, 150), 12, "White")
@@ -212,28 +229,33 @@ def draw(canvas):
     canvas.draw_text("Dealer Wins:" + str(wind), (300, 350), 12, "White")
     canvas.draw_text("Dealer Losses:" + str(lossd), (300, 380), 12, "White")
     canvas.draw_text("BlackJack", (180, 40), 30, "Red")
-    if (flag2 == False and player.get_value() <= 21):
+    if (flag == False and player.get_value() <= 21):
         canvas.draw_text("Hit or Stand?", (180, 550), 20, "Black")
     for i in range(0, len(player.position)):
         player.draw(canvas, [player.position[i], player.position[0]], player.rank1[i], player.suit1[i])
-    if (flag2 == True):
+    if (flag == True):
         dealer.draw(canvas, [dealer.position[0], dealer.position[1]], dealer.rank1[0], dealer.suit1[0])
     else:
         dealer.drawback(canvas, [dealer.position[0], dealer.position[1]])
     for j in range(1, len(dealer.position)):
         dealer.draw(canvas, [dealer.position[j], dealer.position[1]], dealer.rank1[j], dealer.suit1[j])
-    if ((player.get_value() > 21) and (flag1 == True)):
+
+    if ((player.get_value() > 21) and (flag == True)):
         canvas.draw_text("Player is Busted", (180, 480), 20, "Black")
         canvas.draw_text("New Deal?", (180, 550), 20, "Black")
-    elif ((player.get_value() == dealer.get_value()) and (dealer.get_value() >= 17) and (flag2 == True)):
+    elif ((player.get_value() == dealer.get_value()) and (dealer.get_value() >= 17) and (flag == True)):
         canvas.draw_text("Tie!! Dealer Wins", (180, 480), 20, "Black")
         canvas.draw_text("Dealer's Hand:" + str(dealer.get_value()), (10, 380), 12, "Yellow")
         canvas.draw_text("New Deal?", (180, 550), 20, "Black")
-    elif ((dealer.get_value() > player.get_value()) and (dealer.get_value() >= 17) and (flag2 == True)):
+    elif (dealer.get_value()>21) and (flag==True):
+        canvas.draw_text("Dealer is Busted!! Player Wins", (180, 480), 20, "Black")
+        canvas.draw_text("Dealer's Hand:" + str(dealer.get_value()), (10, 380), 12, "Yellow")
+        canvas.draw_text("New Deal?", (180, 550), 20, "Black")
+    elif ((dealer.get_value() > player.get_value()) and (dealer.get_value() >= 17) and (flag == True)):
         canvas.draw_text("Dealer Wins", (180, 480), 20, "Black")
         canvas.draw_text("Dealer's Hand:" + str(dealer.get_value()), (10, 380), 12, "Yellow")
         canvas.draw_text("New Deal?", (180, 550), 20, "Black")
-    elif ((player.get_value() > dealer.get_value()) and (dealer.get_value() >= 17) and (flag2 == True)):
+    elif ((player.get_value() > dealer.get_value()) and (dealer.get_value() >= 17) and (flag == True)):
         canvas.draw_text("Player Wins", (180, 480), 20, "Black")
         canvas.draw_text("Dealer's Hand:" + str(dealer.get_value()), (10, 380), 12, "Yellow")
         canvas.draw_text("New Deal?", (180, 550), 20, "Black")
